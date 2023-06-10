@@ -67,10 +67,35 @@ func lineParse(lines [][]string) []problem {
 	return ret
 }
 
+func reportStats(sessionReport report, funcMap template.FuncMap) {
+	// Output the results
+	sessionStats := template.Must(template.New("OutputResults").Funcs(funcMap).Parse(statReport))
+	err := sessionStats.Execute(os.Stdout, sessionReport)
+	if err != nil {
+		log.Fatalf("For whatever reason, we couldn't output the results...")
+	}
+}
+
+func promptInput(answerChan chan string, i int, p *problem) {
+	fmt.Printf("Problem #%d: %s = \n", i+1, p.Q)
+	var answer string
+	count := 0
+	for count == 0 {
+		n, _ := fmt.Scanf("%s\n", &answer)
+		count = n
+	}
+	answerChan <- answer
+}
+
 func QuizProgram() {
+	// Create FuncMap for template reporting
+	tempFuncMap := template.FuncMap{"divide": tempDivide}
+
 	// Parse user input
 	fileName, v, duration := setup()
-	_ = duration
+
+	// Create timer object
+	timer := time.NewTimer(duration)
 
 	// Read in lines from CSV, parse into array of problem struct
 	lines := getCsv(fileName)
@@ -81,25 +106,31 @@ func QuizProgram() {
 		CorrectAnswers: 0,
 		TotalQuestions: len(problems),
 	}
+
+	answerChan := make(chan string, 1)
+	// Iterate over the problem set
 	for i, p := range problems {
-		fmt.Printf("Problem #%d: %s = \n", i+1, p.Q)
-		var answer string
-		_, err := fmt.Scanf("%s\n", &answer)
-		if err != nil {
+		// Run user answers async in different process
+		go promptInput(answerChan, i, &p)
+
+		// Select between user answers and timer indicating time limit reached
+		select {
+		case <-timer.C:
+			// Time is up, stop program and output results
+			println("Time limit reached")
+			reportStats(sessionReport, tempFuncMap)
 			return
-		}
-		if answer == p.A {
-			sessionReport.CorrectAnswers++
-		} else if *v == true {
-			fmt.Printf("Incorrect Answer, %s=%s, you answered %s\n", p.Q, p.A, answer)
+
+		case answer := <-answerChan:
+			// Otherwise continue with questions, increment results
+			if answer == p.A {
+				sessionReport.CorrectAnswers++
+			} else if *v == true {
+				fmt.Printf("Incorrect Answer, %s=%s, you answered %s\n", p.Q, p.A, answer)
+			}
 		}
 	}
 
-	// Output the results
-	sessionStats := template.Must(template.New("OutputResults").Funcs(template.FuncMap{"divide": tempDivide}).Parse(statReport))
-	err := sessionStats.Execute(os.Stdout, sessionReport)
-	if err != nil {
-		log.Fatalf("For whatever reason, we couldn't output the results...")
-	}
-
+	// Output final statistics
+	reportStats(sessionReport, tempFuncMap)
 }
