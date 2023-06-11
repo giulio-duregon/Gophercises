@@ -1,28 +1,34 @@
 package main
 
 import (
+	"Gophercises/src/adventure"
 	"Gophercises/src/quizGame"
 	"Gophercises/src/urlShortener"
-	"flag"
+	"log"
 )
 
 const (
 	QuizGame int = iota + 1
 	URLShortener
+	Adventure
 )
 
-func exerciseSelector() {
-
+func exerciseSelector(program *int) func() {
+	switch *program {
+	case QuizGame:
+		return quizGame.QuizProgram
+	case URLShortener:
+		return urlShortener.UrlShortProgram
+	case Adventure:
+		return adventure.CYOAProgram
+	}
+	return func() {
+		log.Fatalf("Invalid argument, you entered: %d\n", *program)
+	}
 }
 
 func main() {
-	program := flag.Int("p", 1, "Selects the exercise that you want to run, 1-based indexing")
-	flag.Parse()
-	switch *program {
-	case QuizGame:
-		quizGame.QuizProgram()
-	case URLShortener:
-		urlShortener.UrlShortProgram()
-	}
+	program := 3
+	exerciseSelector(&program)()
 
 }

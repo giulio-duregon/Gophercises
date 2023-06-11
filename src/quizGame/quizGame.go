@@ -34,7 +34,7 @@ func setup() (*string, *bool, time.Duration) {
 	quizDuration := time.Second * 30
 	v := flag.Bool("verbose", false, "Prints out if you answered a question incorrectly")
 	flag.DurationVar(&quizDuration, "time", time.Second*30, "The amount of seconds to complete the quiz")
-	fileName := flag.String("csv", "static/problems.csv", "The path to the question/answer csv. 2 Columns, the first being question, the second answer.")
+	fileName := flag.String("csv", "static/quiz/problems.csv", "The path to the question/answer csv. 2 Columns, the first being question, the second answer.")
 	flag.Parse()
 	return fileName, v, quizDuration
 }
